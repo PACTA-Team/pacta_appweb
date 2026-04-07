@@ -1,4 +1,4 @@
-import { createSuccessResponse, createErrorResponse } from '@/lib/create-response';
+import { createSuccessResponse } from '@/lib/create-response';
 import { getDb } from '@/lib/db';
 
 // GET request - health check endpoint (read-only, no side effects)
@@ -9,7 +9,7 @@ export async function GET() {
     return Response.json(createSuccessResponse({ status: 'ok' }));
   } catch {
     return Response.json(
-      createErrorResponse({ status: 'error', message: 'Database connection failed' }),
+      { error: { message: 'Database connection failed' } },
       { status: 500 }
     );
   }
