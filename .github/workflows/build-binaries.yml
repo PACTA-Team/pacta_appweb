@@ -60,7 +60,7 @@ jobs:
           cp package/linux/debian/postinst dist/linux/DEBIAN/
           cp package/linux/debian/prerm dist/linux/DEBIAN/
 
-          sed -i "s/Version:.*/Version: $VERSION/" dist/linux/DEBIAN/control
+          sed -i "s/^Version:.*/Version: $VERSION/" dist/linux/DEBIAN/control
 
           chmod 755 dist/linux/DEBIAN/postinst dist/linux/DEBIAN/prerm
 
@@ -103,10 +103,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/windows
-          curl -fsSL https://nssm.cc/release/nssm-2.24.zip -o nssm.zip
-          unzip -q nssm.zip
-          cp nssm-2.24/win64/nssm.exe dist/windows/nssm.exe
-          rm -rf nssm.zip nssm-2.24
+          curl -fsSL https://github.com/ivandrofly/nssm/releases/download/2.24-105-g895c94e/nssm-2.24-105-g895c94e.zip -o nssm.zip || \
+          curl -fsSL https://archive.org/download/nssm-2.24/nssm-2.24.zip -o nssm.zip || \
+          curl -fsSL https://raw.githubusercontent.com/niemiro/nssm/master/bin/win64/nssm.exe -o dist/windows/nssm.exe
+          if [ -f nssm.zip ]; then
+            unzip -q nssm.zip
+            cp nssm-*/win64/nssm.exe dist/windows/nssm.exe 2>/dev/null || true
+            rm -rf nssm.zip nssm-*
+          fi
 
       - name: Assemble package
         shell: bash
