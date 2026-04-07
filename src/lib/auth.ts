@@ -2,17 +2,21 @@ import bcrypt from 'bcrypt';
 import { SignJWT, jwtVerify } from 'jose';
 import { getDb } from './db';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'dev-secret-change-in-production-min-32-chars!!'
-);
+// JWT Secret: fail hard in production if not set
+let JWT_SECRET: Uint8Array;
+
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production. Generate one with: openssl rand -base64 32');
+  }
+  console.warn('[WARN] JWT_SECRET not set. Using generated secret (server restart will invalidate all sessions)');
+  JWT_SECRET = new TextEncoder().encode(crypto.randomUUID());
+} else {
+  JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+}
 
 const BCRYPT_ROUNDS = 12;
-const JWT_EXPIRY = '24h';
-
-// Warn if using default secret
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('WARNING: Using default JWT_SECRET. Set a secure secret in production!');
-}
+const JWT_EXPIRY = '8h';
 
 export interface JWTPayload {
   sub: string;  // user id
@@ -80,20 +84,31 @@ export async function login(email: string, password: string): Promise<{ token: s
   };
 }
 
-export async function register(name: string, email: string, password: string): Promise<{ token: string; user: any } | null> {
+export async function register(name: string, email: string, password: string, username?: string): Promise<{ user: any } | null> {
   const db = getDb();
 
-  // Check if email exists
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  // Check if email or username exists
+  const existing = db.prepare('SELECT id FROM users WHERE email = ? OR username = ?').get(email, username || null);
   if (existing) return null;
 
-  const id = Date.now().toString();
+  const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const passwordHash = await hashPassword(password);
 
   db.prepare(
-    'INSERT INTO users (id, name, email, password_hash, role, status, last_access, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, name, email, passwordHash, 'viewer', 'active', now, now);
+    'INSERT INTO users (id, name, email, username, password_hash, role, status, last_access, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, name, email, username || null, passwordHash, 'viewer', 'pending', null, now);
 
-  return login(email, password);
+  // Return user info without token (pending approval)
+  return {
+    user: {
+      id,
+      name,
+      email,
+      username: username || null,
+      role: 'viewer',
+      status: 'pending',
+      createdAt: now,
+    },
+  };
 }

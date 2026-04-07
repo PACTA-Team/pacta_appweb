@@ -2,13 +2,7 @@ import { NextRequest } from 'next/server';
 import { register } from '@/lib/auth';
 import { createSuccessResponse, createErrorResponse } from '@/lib/create-response';
 import { requestMiddleware, validateRequestBody } from '@/lib/api-utils';
-import { z } from 'zod';
-
-const registerSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-  email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
+import { registerSchema } from '@/lib/validation-schemas';
 
 export const POST = requestMiddleware(async (request: NextRequest) => {
   const body = await validateRequestBody(request);
@@ -21,15 +15,23 @@ export const POST = requestMiddleware(async (request: NextRequest) => {
     });
   }
 
-  const { name, email, password } = parsed.data;
-  const result = await register(name, email, password);
+  const { name, username, password } = parsed.data;
+
+  // Use email-like format for internal storage (username@pacta.local)
+  const email = `${username}@pacta.local`;
+
+  const result = await register(name, email, password, username);
 
   if (!result) {
     return createErrorResponse({
-      errorMessage: 'Email already registered',
+      errorMessage: 'Username already taken',
       status: 409,
     });
   }
 
-  return createSuccessResponse({ token: result.token, user: result.user }, 201);
+  // Don't return token - user must wait for admin approval
+  return createSuccessResponse({
+    message: 'Registration successful. Your account is pending admin approval.',
+    userId: result.user.id,
+  }, 201);
 });

@@ -144,8 +144,9 @@ export function requestMiddleware(
         return error;
       }
 
+      const isProd = process.env.NODE_ENV === 'production';
       const anyError = error as any;
-      const errorMessage: string =
+      const rawMessage: string =
         typeof anyError?.message === "string"
           ? anyError.message
           : "Request failed";
@@ -157,6 +158,11 @@ export function requestMiddleware(
           : 500;
       const errorCode: string | undefined =
         typeof anyError?.code === "string" ? anyError.code : undefined;
+
+      // Sanitize error message in production
+      const errorMessage = isProd
+        ? (status >= 500 ? 'An internal error occurred' : rawMessage)
+        : rawMessage;
 
       return createErrorResponse({
         errorCode,

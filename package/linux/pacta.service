@@ -1,0 +1,14 @@
+[Unit]
+Description=PACTA Local Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pacta/app
+ExecStart=/opt/pacta/linux/node/bin/node /opt/pacta/app/start-production.js
+Restart=on-failure
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
