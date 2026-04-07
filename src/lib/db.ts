@@ -23,9 +23,24 @@ export function getDb(): Database.Database {
     // Initialize schema if this is a new database
     if (!dbExists) {
       initSchema(db);
+    } else {
+      // Run migrations for existing databases
+      runMigrations(db);
     }
   }
   return db;
+}
+
+function runMigrations(database: Database.Database): void {
+  // Add username column if not present
+  try {
+    database.exec('ALTER TABLE users ADD COLUMN username TEXT');
+  } catch {
+    // Column already exists, ignore
+  }
+
+  // Add 'pending', 'rejected', 'suspended' to status check if not present
+  // SQLite doesn't support ALTER TABLE CHECK constraint, so we handle this at app level
 }
 
 function initSchema(database: Database.Database): void {
