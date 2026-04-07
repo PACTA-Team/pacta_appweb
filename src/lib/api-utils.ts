@@ -3,19 +3,13 @@ import { createErrorResponse } from "./create-response";
 import { z } from "zod";
 
 /**
- * Validates that required PostgREST environment variables are set
+ * Validates that required environment variables are set
  */
 export function validateEnv(): void {
-  const requiredVars = [
-    "SUPABASE_URL",
-    "SUPABASE_ANON_KEY",
-  ];
-  const missing = requiredVars.filter((varName) => !process.env[varName]);
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}`
-    );
+  // SQLite doesn't require env vars for local dev
+  // Only validate JWT_SECRET in production
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET environment variable is required in production");
   }
 }
 

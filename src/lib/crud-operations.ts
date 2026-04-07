@@ -1,5 +1,4 @@
-import { createPostgrestClient } from "./postgrest";
-import { validateEnv } from "./api-utils";
+import { getDb } from "./db";
 
 /**
  * Custom error classes for better error handling
@@ -24,14 +23,10 @@ export class DatabaseError extends Error {
 type FilterValue = any | { operator: string; value: any };
 
 /**
- * Utility class for common CRUD operations with PostgREST
+ * Utility class for common CRUD operations with SQLite
  */
 export default class CrudOperations {
-  private client: ReturnType<typeof createPostgrestClient>;
-
-  constructor(private tableName: string, private authToken?: string) {
-    this.client = createPostgrestClient(this.authToken);
-  }
+  constructor(private tableName: string) {}
 
   /**
    * Fetches multiple records with optional filtering, sorting, and pagination
@@ -47,163 +42,174 @@ export default class CrudOperations {
       };
     },
   ) {
-    validateEnv();
     const { limit, offset, orderBy } = params || {};
 
-    let query = this.client
-      .from(this.tableName)
-      .select("*")
-
-    if (orderBy) {
-      query = query.order(orderBy.column, {
-        ascending: orderBy.direction === "asc",
-      });
-    }
+    let sql = `SELECT * FROM ${this.tableName}`;
+    const values: any[] = [];
+    const whereClauses: string[] = [];
 
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           if (typeof value === 'object' && value !== null && 'operator' in value && 'value' in value) {
-            // Advanced filter with operator
             const { operator, value: val } = value;
             switch (operator) {
               case 'eq':
-                query = query.eq(key, val);
+                whereClauses.push(`${key} = ?`);
+                values.push(val);
                 break;
               case 'neq':
-                query = query.neq(key, val);
+                whereClauses.push(`${key} != ?`);
+                values.push(val);
                 break;
               case 'gt':
-                query = query.gt(key, val);
+                whereClauses.push(`${key} > ?`);
+                values.push(val);
                 break;
               case 'lt':
-                query = query.lt(key, val);
+                whereClauses.push(`${key} < ?`);
+                values.push(val);
                 break;
               case 'gte':
-                query = query.gte(key, val);
+                whereClauses.push(`${key} >= ?`);
+                values.push(val);
                 break;
               case 'lte':
-                query = query.lte(key, val);
+                whereClauses.push(`${key} <= ?`);
+                values.push(val);
                 break;
               case 'like':
-                query = query.like(key, val);
+                whereClauses.push(`${key} LIKE ?`);
+                values.push(val);
                 break;
               case 'ilike':
-                query = query.ilike(key, val);
+                whereClauses.push(`LOWER(${key}) LIKE LOWER(?)`);
+                values.push(val);
                 break;
               case 'in':
-                query = query.in(key, val);
+                const placeholders = (val as any[]).map(() => '?').join(',');
+                whereClauses.push(`${key} IN (${placeholders})`);
+                values.push(...val);
                 break;
               default:
                 throw new ValidationError(`Unsupported filter operator: ${operator}`);
             }
           } else {
-            // Simple filter, default to eq for backward compatibility
-            query = query.eq(key, value);
+            whereClauses.push(`${key} = ?`);
+            values.push(value);
           }
         }
       });
     }
 
-    if (limit && offset !== undefined) {
-      query = query.range(offset, offset + limit - 1);
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ${whereClauses.join(' AND ')}`;
     }
 
-    const { data, error } = await query;
+    if (orderBy) {
+      const dir = orderBy.direction === 'asc' ? 'ASC' : 'DESC';
+      sql += ` ORDER BY ${orderBy.column} ${dir}`;
+    }
 
-    if (error) {
-      console.error(`Database error in findMany for ${this.tableName}: ${error.message}`, { code: error.code, details: error.details });
+    if (limit && offset !== undefined) {
+      sql += ` LIMIT ? OFFSET ?`;
+      values.push(limit, offset);
+    }
+
+    try {
+      const db = getDb();
+      const rows = db.prepare(sql).all(...values);
+      return rows;
+    } catch (error: any) {
+      console.error(`Database error in findMany for ${this.tableName}: ${error.message}`);
       throw new DatabaseError(`Failed to fetch ${this.tableName}: ${error.message}`, error.code);
     }
-
-    return data;
   }
 
   /**
    * Fetches a single record by its ID
    */
   async findById(id: string | number) {
-    validateEnv();
-
-    const { data, error } = await this.client
-      .from(this.tableName)
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        return null;
-      }
-      console.error(`Database error in findById for ${this.tableName} with id ${id}: ${error.message}`, { code: error.code, details: error.details });
-      throw new DatabaseError(
-        `Failed to fetch ${this.tableName} by id: ${error.message}`,
-        error.code
-      );
+    try {
+      const db = getDb();
+      const row = db.prepare(`SELECT * FROM ${this.tableName} WHERE id = ?`).get(id);
+      return row || null;
+    } catch (error: any) {
+      console.error(`Database error in findById for ${this.tableName}: ${error.message}`);
+      throw new DatabaseError(`Failed to fetch ${this.tableName} by id: ${error.message}`, error.code);
     }
-
-    return data;
   }
 
   /**
    * Creates a new record in the table
    */
   async create(data: Record<string, any>) {
-    validateEnv();
-      
-    const res = await this.client
-      .from(this.tableName)
-      .insert([data])
-      .select()
-      .single();
+    const columns = Object.keys(data);
+    const placeholders = columns.map(() => '?').join(',');
+    const values = Object.values(data);
 
-    const { data: result, error } = res;
+    const sql = `INSERT INTO ${this.tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
 
-    if (error) {
-      console.error(`Database error in create for ${this.tableName}: ${error.message}`, { code: error.code, details: error.details, data });
+    try {
+      const db = getDb();
+      const result = db.prepare(sql).run(...values);
+      return db.prepare(`SELECT * FROM ${this.tableName} WHERE id = ?`).get(result.lastInsertRowid);
+    } catch (error: any) {
+      console.error(`Database error in create for ${this.tableName}: ${error.message}`);
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        throw new ValidationError(`Duplicate entry in ${this.tableName}`);
+      }
+      if (error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') {
+        throw new ValidationError(`Invalid foreign key reference in ${this.tableName}`);
+      }
       throw new DatabaseError(`Failed to create ${this.tableName}: ${error.message}`, error.code);
     }
-
-    return result;
   }
 
   /**
    * Updates an existing record by ID
    */
-  async update(
-    id: string | number,
-    data: Record<string, any>
-  ) {
-    validateEnv();
+  async update(id: string | number, data: Record<string, any>) {
+    const columns = Object.keys(data);
+    const setClause = columns.map(col => `${col} = ?`).join(',');
+    const values = [...Object.values(data), id];
 
-    const { data: result, error } = await this.client
-      .from(this.tableName)
-      .update(data)
-      .eq("id", id)
-      .select()
-      .single();
+    const sql = `UPDATE ${this.tableName} SET ${setClause} WHERE id = ?`;
 
-    if (error) {
-      console.error(`Database error in update for ${this.tableName} with id ${id}: ${error.message}`, { code: error.code, details: error.details, data });
+    try {
+      const db = getDb();
+      const result = db.prepare(sql).run(...values);
+
+      if (result.changes === 0) {
+        return null;
+      }
+
+      return db.prepare(`SELECT * FROM ${this.tableName} WHERE id = ?`).get(id);
+    } catch (error: any) {
+      console.error(`Database error in update for ${this.tableName}: ${error.message}`);
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        throw new ValidationError(`Duplicate entry in ${this.tableName}`);
+      }
       throw new DatabaseError(`Failed to update ${this.tableName}: ${error.message}`, error.code);
     }
-
-    return result;
   }
 
   /**
    * Deletes a record by ID
    */
   async delete(id: string | number) {
-    validateEnv();
+    try {
+      const db = getDb();
+      const result = db.prepare(`DELETE FROM ${this.tableName} WHERE id = ?`).run(id);
 
-    const { error } = await this.client.from(this.tableName).delete().eq("id", id);
+      if (result.changes === 0) {
+        return null;
+      }
 
-    if (error) {
-      console.error(`Database error in delete for ${this.tableName} with id ${id}: ${error.message}`, { code: error.code, details: error.details });
+      return { id };
+    } catch (error: any) {
+      console.error(`Database error in delete for ${this.tableName}: ${error.message}`);
       throw new DatabaseError(`Failed to delete ${this.tableName}: ${error.message}`, error.code);
     }
-
-    return { id };
   }
 }
