@@ -1,19 +1,10 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from './auth';
+import { getDb } from './db';
 import { createErrorResponse } from './create-response';
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY!;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
-
 /**
- * Middleware to authenticate requests using Supabase JWT tokens
+ * Middleware to authenticate requests using JWT tokens
  */
 export async function authenticateRequest(request: NextRequest): Promise<{ user: any; token: string } | Response> {
   try {
@@ -26,7 +17,7 @@ export async function authenticateRequest(request: NextRequest): Promise<{ user:
       });
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const token = authHeader.substring(7);
 
     if (!token) {
       return createErrorResponse({
@@ -35,12 +26,22 @@ export async function authenticateRequest(request: NextRequest): Promise<{ user:
       });
     }
 
-    // Verify the JWT token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const payload = await verifyToken(token);
 
-    if (error || !user) {
+    if (!payload) {
       return createErrorResponse({
         errorMessage: 'Invalid or expired token',
+        status: 401,
+      });
+    }
+
+    // Fetch user from database
+    const db = getDb();
+    const user = db.prepare('SELECT id, name, email, role, status, last_access, created_at FROM users WHERE id = ?', payload.sub).get() as any;
+
+    if (!user || user.status !== 'active') {
+      return createErrorResponse({
+        errorMessage: 'User not found or inactive',
         status: 401,
       });
     }

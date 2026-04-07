@@ -18,9 +18,9 @@ export default function LoginForm() {
   const { login, register } = useAuth();
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = login(email, password);
+    const user = await login(email, password);
     if (user) {
       toast.success('Login successful!');
       router.push('/dashboard');
@@ -29,9 +29,9 @@ export default function LoginForm() {
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = register(name, email, password);
+    const user = await register(name, email, password);
     if (user) {
       toast.success('Registration successful! Please login.');
       setShowRegister(false);

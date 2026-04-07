@@ -53,5 +53,3 @@ export function closeDb(): void {
     db = null;
   }
 }
-
-export type Row = Database.Row;
