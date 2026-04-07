@@ -18,7 +18,7 @@ export const PUT = withAuth(async (request, { token }) => {
 
   const validatedBody = await validateRequestBodyWithSchema(request, updateExampleSchema);
 
-  const examplesCrud = new CrudOperations("examples", token);
+  const examplesCrud = new CrudOperations("examples");
 
   // Check if record exists
   const existing = await examplesCrud.findById(id);
@@ -45,7 +45,7 @@ export const DELETE = withAuth(async (request, { token }) => {
     });
   }
 
-  const examplesCrud = new CrudOperations("examples", token);
+  const examplesCrud = new CrudOperations("examples");
 
   // Check if record exists
   const existing = await examplesCrud.findById(id);

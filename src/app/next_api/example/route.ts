@@ -12,7 +12,7 @@ export const GET = withAuth(async (request, { token }) => {
   const search = searchParams.get("search");
 
   // Create CRUD operations instance with auth token
-  const examplesCrud = new CrudOperations("examples", token);
+  const examplesCrud = new CrudOperations("examples");
 
   // Build filter conditions
   const filters: Record<string, any> = {};
@@ -29,7 +29,7 @@ export const GET = withAuth(async (request, { token }) => {
 export const POST = withAuth(async (request, { token }) => {
   const validatedBody = await validateRequestBodyWithSchema(request, createExampleSchema);
 
-  const examplesCrud = new CrudOperations("examples", token);
+  const examplesCrud = new CrudOperations("examples");
   const data = await examplesCrud.create(validatedBody);
   return createSuccessResponse(data, 201);
 });
