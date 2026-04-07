@@ -1,21 +1,16 @@
-import { createSuccessResponse } from '@/lib/create-response';
-import { requestMiddleware } from "@/lib/api-utils";
-import { seedDatabase } from '@/lib/seed';
+import { createSuccessResponse, createErrorResponse } from '@/lib/create-response';
+import { getDb } from '@/lib/db';
 
-// Seed on first request
-let seeded = false;
-
-// GET request - health check endpoint
-export const GET = requestMiddleware(async () => {
-  if (!seeded) {
-    await seedDatabase();
-    seeded = true;
+// GET request - health check endpoint (read-only, no side effects)
+export async function GET() {
+  try {
+    const db = getDb();
+    db.prepare('SELECT 1').get();
+    return Response.json(createSuccessResponse({ status: 'ok' }));
+  } catch {
+    return Response.json(
+      createErrorResponse({ status: 'error', message: 'Database connection failed' }),
+      { status: 500 }
+    );
   }
-  return createSuccessResponse({ status: 'ok' });
-});
-
-
-// POST request - health check endpoint
-export const POST = requestMiddleware(async () => {
-  return createSuccessResponse({ status: 'ok' });
-});
+}

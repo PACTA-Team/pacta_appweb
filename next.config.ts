@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://127.0.0.1:3000', 'http://localhost:3000'];
+
 const nextConfig: NextConfig = {
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   async headers() {
     return [
@@ -11,7 +15,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "*", // Consider restricting to specific origins in production
+            value: allowedOrigins.join(', '),
           },
           {
             key: "Access-Control-Allow-Methods",
@@ -22,6 +26,10 @@ const nextConfig: NextConfig = {
             value: "Content-Type, Authorization",
           },
           {
+            key: "Access-Control-Allow-Credentials",
+            value: "true",
+          },
+          {
             key: "Access-Control-Max-Age",
             value: "86400",
           },
@@ -30,20 +38,8 @@ const nextConfig: NextConfig = {
             value: "DENY",
           },
           {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self';",
-          },
-          {
             key: "X-Content-Type-Options",
             value: "nosniff",
-          },
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
           },
           {
             key: "Referrer-Policy",
@@ -59,20 +55,8 @@ const nextConfig: NextConfig = {
             value: "SAMEORIGIN",
           },
           {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';",
-          },
-          {
             key: "X-Content-Type-Options",
             value: "nosniff",
-          },
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
           },
           {
             key: "Referrer-Policy",
