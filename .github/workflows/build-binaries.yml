@@ -14,103 +14,139 @@ on:
 permissions:
   contents: write
 
+env:
+  NODE_VERSION: '22.14.0'
+
 jobs:
-  build:
-    name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux
-            artifact: pacta-linux.tar.gz
-          - os: windows-latest
-            platform: windows
-            artifact: pacta-windows.zip
+  build-linux:
+    name: Build Linux (.deb)
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js app
+      - name: Build Next.js
+        env:
+          JWT_SECRET: build-time-secret-for-standalone-output
         run: npm run build
 
-      - name: Create standalone app
+      - name: Download Node.js
         run: |
-          mkdir -p dist/app
-          cp -r .next dist/app/
-          cp -r public dist/app/ 2>/dev/null || true
-          cp package.json dist/app/
-          cp next.config.ts dist/app/
-          cp start-production.js dist/app/
-          cp tsconfig.json dist/app/
+          mkdir -p dist/linux/opt/pacta/node
+          curl -fsSL https://nodejs.org/dist/v${{ env.NODE_VERSION }}/node-v${{ env.NODE_VERSION }}-linux-x64.tar.xz | \
+            tar -xJ -C dist/linux/opt/pacta/node --strip-components=1
 
-      - name: Install production dependencies
-        run: npm install --omit=dev
-        working-directory: dist/app
-
-      - name: Download Node.js (Linux)
-        if: matrix.platform == 'linux'
+      - name: Assemble package
         run: |
-          mkdir -p dist/linux/node
-          curl -fsSL https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz | \
-            tar -xJ -C dist/linux/node --strip-components=1
+          cp -r .next/standalone/* dist/linux/opt/pacta/
+          cp -r public dist/linux/opt/pacta/public 2>/dev/null || true
+          mkdir -p dist/linux/opt/pacta/data dist/linux/opt/pacta/uploads dist/linux/opt/pacta/config
+          cp .env.example dist/linux/opt/pacta/config/
+          cp package/linux/pacta.service dist/linux/opt/pacta/
 
-      - name: Download Node.js (Windows)
-        if: matrix.platform == 'windows'
+      - name: Build .deb package
         run: |
-          mkdir -p dist/windows/node
-          Invoke-WebRequest -Uri "https://nodejs.org/dist/v22.14.0/win-x64/node.exe" -OutFile "dist/windows/node/node.exe"
+          VERSION=${GITHUB_REF#refs/tags/v}
+          mkdir -p dist/linux/DEBIAN
+          cp package/linux/debian/control dist/linux/DEBIAN/
+          cp package/linux/debian/postinst dist/linux/DEBIAN/
+          cp package/linux/debian/prerm dist/linux/DEBIAN/
 
-      - name: Setup package structure
-        run: |
-          mkdir -p dist/shared/data dist/shared/uploads dist/shared/config
-          cp .env.example dist/shared/config/
+          sed -i "s/Version:.*/Version: $VERSION/" dist/linux/DEBIAN/control
 
-      - name: Copy platform files
-        run: |
-          cp -r package/${{ matrix.platform }}/* dist/${{ matrix.platform }}/ 2>/dev/null || true
-          cp -r package/shared/* dist/shared/ 2>/dev/null || true
+          chmod 755 dist/linux/DEBIAN/postinst dist/linux/DEBIAN/prerm
 
-      - name: Create Linux archive
-        if: matrix.platform == 'linux'
-        run: |
-          tar -czf ${{ matrix.artifact }} -C dist .
-          echo "Linux package size: $(du -h ${{ matrix.artifact }} | cut -f1)"
-
-      - name: Create Windows archive
-        if: matrix.platform == 'windows'
-        run: |
-          Compress-Archive -Path dist/* -DestinationPath ${{ matrix.artifact }}
-          $size = (Get-Item ${{ matrix.artifact }}).Length / 1MB
-          Write-Host "Windows package size: $([math]::Round($size, 2)) MB"
+          dpkg-deb --build dist/linux pacta_${VERSION}_amd64.deb
+          echo "Package size: $(du -h pacta_${VERSION}_amd64.deb | cut -f1)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+          name: pacta-linux
+          path: pacta_*.deb
+
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        env:
+          JWT_SECRET: build-time-secret-for-standalone-output
+        run: npm run build
+
+      - name: Download Node.js
+        run: |
+          mkdir -p dist/windows/node
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/v${{ env.NODE_VERSION }}/win-x64/node.exe" -OutFile "dist/windows/node/node.exe"
+
+      - name: Download NSSM
+        run: |
+          mkdir -p dist/windows
+          Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile "nssm.zip"
+          Expand-Archive -Path nssm.zip -DestinationPath nssm-temp
+          Copy-Item "nssm-temp/nssm-2.24/win64/nssm.exe" -Destination "dist/windows/nssm.exe"
+          Remove-Item -Recurse -Force nssm.zip, nssm-temp
+
+      - name: Assemble package
+        run: |
+          mkdir -p dist/windows/app
+          cp -r .next/standalone/* dist/windows/app/
+          cp -r public dist/windows/app/public 2>/dev/null || true
+          mkdir -p dist/windows/shared/data dist/windows/shared/uploads dist/windows/shared/config
+          cp .env.example dist/windows/shared/config/
+          cp package/windows/start.bat dist/windows/
+
+      - name: Generate Inno Setup script
+        run: |
+          $VERSION = "${{ github.ref_name }}" -replace 'v',''
+          $iss = Get-Content -Raw "package/windows/pacta.iss"
+          $iss = $iss -replace '\{VERSION_PLACEHOLDER\}', $VERSION
+          Set-Content -Path "dist/windows/pacta.iss" -Value $iss
+
+      - name: Compile Inno Setup
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: dist/windows/pacta.iss
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacta-windows
+          path: dist/pacta-setup-*.exe
 
   release:
-    name: Create Release
-    needs: build
+    name: Create GitHub Release
+    needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+
     steps:
       - uses: actions/download-artifact@v4
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            pacta-linux.tar.gz
-            pacta-windows.zip
+            pacta-linux/pacta_*.deb
+            pacta-windows/pacta-setup-*.exe
           generate_release_notes: true
           draft: true
