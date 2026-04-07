@@ -132,29 +132,26 @@ To allow network access:
 
 4. The SQLite database will be created automatically in `data/pacta.db`
 
-5. Default login credentials:
-   - Email: `admin@pacta.local`
-   - Password: `pacta123`
+5. Open http://127.0.0.1:3000 in your browser and complete the setup wizard to create your admin account.
 
 ### API Endpoints
 
 - `POST /next_api/auth/login` - Login with email/password
-- `POST /next_api/auth/register` - Register new user
+- `POST /next_api/auth/register` - Register new user (pending approval)
+- `POST /next_api/auth/setup` - Initial admin setup wizard
 - `GET /next_api/health` - Health check
-- `GET /next_api/example` - List examples (requires auth)
-- `POST /next_api/example` - Create example (requires auth)
-- `PUT /next_api/example/:id` - Update example (requires auth)
-- `DELETE /next_api/example/:id` - Delete example (requires auth)
-- `POST /next_api/upload` - File upload
+- `POST /next_api/upload` - File upload (requires auth)
 
 ## Usage Guide
 
-1. **Login**: Use default credentials or register a new account.
-2. **Dashboard**: View KPIs, contract status, and quick actions.
-3. **Manage Contracts**: Navigate to the Contracts section to create, edit, or view contracts.
-4. **Reports**: Generate and export various reports from the Reports section.
-5. **Users**: Manage user roles and permissions in the Users section.
-6. **Notifications**: Check automated alerts in the Notifications section.
+1. **First Setup**: Complete the setup wizard to create your admin account.
+2. **Dashboard**: View KPIs, contract status distribution, and quick actions.
+3. **Manage Contracts**: Navigate to Contracts to create, edit, or view contracts with full lifecycle tracking.
+4. **Clients & Suppliers**: Manage business entities and their authorized signers.
+5. **Supplements**: Track contract modifications with approval workflows.
+6. **Reports**: Generate financial analysis, expiration reports, and export data.
+7. **Documents**: Upload and organize contract-related documents.
+8. **Notifications**: Monitor alerts for expiring contracts and system events.
 
 ## Project Structure
 
