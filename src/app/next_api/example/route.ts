@@ -5,7 +5,7 @@ import { validateRequestBodyWithSchema } from '@/lib/api-utils';
 import { createExampleSchema } from '@/lib/validation-schemas';
 
 // GET request - list examples
-export const GET = withAuth(async (request, { token }) => {
+export const GET = withAuth(async (request, { user }) => {
   const searchParams = request.nextUrl.searchParams;
   const limit = parseInt(searchParams.get("limit") || "10");
   const offset = parseInt(searchParams.get("offset") || "0");
@@ -26,7 +26,7 @@ export const GET = withAuth(async (request, { token }) => {
 });
 
 // POST request - create example
-export const POST = withAuth(async (request, { token }) => {
+export const POST = withAuth(async (request, { user }) => {
   const validatedBody = await validateRequestBodyWithSchema(request, createExampleSchema);
 
   const examplesCrud = new CrudOperations("examples");

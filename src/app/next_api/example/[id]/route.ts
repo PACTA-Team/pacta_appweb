@@ -5,7 +5,7 @@ import { validateRequestBodyWithSchema } from '@/lib/api-utils';
 import { updateExampleSchema } from '@/lib/validation-schemas';
 
 // PUT request - update example by id
-export const PUT = withAuth(async (request, { token }) => {
+export const PUT = withAuth(async (request, { user }) => {
   const url = new URL(request.url);
   const id = url.pathname.split('/').pop(); // Extract id from URL path
 
@@ -34,7 +34,7 @@ export const PUT = withAuth(async (request, { token }) => {
 });
 
 // DELETE request - delete example by id
-export const DELETE = withAuth(async (request, { token }) => {
+export const DELETE = withAuth(async (request, { user }) => {
   const url = new URL(request.url);
   const id = url.pathname.split('/').pop(); // Extract id from URL path
 

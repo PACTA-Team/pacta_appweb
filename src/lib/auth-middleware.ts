@@ -1,95 +1,64 @@
 import { NextRequest } from 'next/server';
-import { verifyToken } from './auth';
-import { getDb } from './db';
 import { createErrorResponse } from './create-response';
 
 /**
- * Middleware to authenticate requests using JWT tokens
- */
-export async function authenticateRequest(request: NextRequest): Promise<{ user: any; token: string } | Response> {
-  try {
-    const authHeader = request.headers.get('authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return createErrorResponse({
-        errorMessage: 'Authorization header with Bearer token required',
-        status: 401,
-      });
-    }
-
-    const token = authHeader.substring(7);
-
-    if (!token) {
-      return createErrorResponse({
-        errorMessage: 'JWT token is required',
-        status: 401,
-      });
-    }
-
-    const payload = await verifyToken(token);
-
-    if (!payload) {
-      return createErrorResponse({
-        errorMessage: 'Invalid or expired token',
-        status: 401,
-      });
-    }
-
-    // Fetch user from database
-    const db = getDb();
-    const user = db.prepare('SELECT id, name, email, role, status, last_access, created_at FROM users WHERE id = ?').get(payload.sub) as any;
-
-    if (!user || user.status !== 'active') {
-      return createErrorResponse({
-        errorMessage: 'User not found or inactive',
-        status: 401,
-      });
-    }
-
-    return { user, token };
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return createErrorResponse({
-      errorMessage: 'Authentication failed',
-      status: 401,
-    });
-  }
-}
-
-/**
- * Higher-order function that wraps route handlers with authentication
+ * Middleware to authenticate requests using headers set by Next.js middleware.
+ * Middleware verifies the JWT cookie and injects user info into headers.
  */
 export function withAuth(
-  handler: (request: NextRequest, context: { user: any; token: string }) => Promise<Response>
+  handler: (request: NextRequest, context: { user: { id: string; role: string; name: string } }) => Promise<Response>
 ) {
   return async (request: NextRequest): Promise<Response> => {
-    const authResult = await authenticateRequest(request);
+    const userId = request.headers.get('x-user-id');
+    const userRole = request.headers.get('x-user-role');
+    const userName = request.headers.get('x-user-name');
 
-    if (authResult instanceof Response) {
-      return authResult;
+    if (!userId) {
+      return createErrorResponse({
+        errorMessage: 'Unauthorized',
+        status: 401,
+      });
     }
 
-    const { user, token } = authResult;
+    const user = {
+      id: userId,
+      role: userRole || 'viewer',
+      name: userName || 'Unknown',
+    };
 
     try {
-      return await handler(request, { user, token });
+      return await handler(request, { user });
     } catch (error) {
       console.error('Handler error:', error);
 
-      const anyError = error as any;
-      const errorMessage: string =
-        typeof anyError?.message === "string"
-          ? anyError.message
-          : "Internal server error";
-      const status: number =
-        typeof anyError?.statusCode === "number"
-          ? anyError.statusCode
-          : 500;
-
+      const isProd = process.env.NODE_ENV === 'production';
       return createErrorResponse({
-        errorMessage,
-        status,
+        errorMessage: isProd ? 'An internal error occurred' : (error as Error)?.message || 'Internal server error',
+        status: 500,
       });
     }
+  };
+}
+
+/**
+ * Require specific roles to access a route.
+ * Usage: withAuth(requireRole(['admin', 'manager'])(handler))
+ */
+export function requireRole(allowedRoles: string[]) {
+  return (
+    handler: (request: NextRequest, context: { user: { id: string; role: string; name: string } }) => Promise<Response>
+  ) => {
+    return async (
+      request: NextRequest,
+      context: { user: { id: string; role: string; name: string } }
+    ): Promise<Response> => {
+      if (!allowedRoles.includes(context.user.role)) {
+        return createErrorResponse({
+          errorMessage: 'Forbidden: insufficient permissions',
+          status: 403,
+        });
+      }
+      return handler(request, context);
+    };
   };
 }
