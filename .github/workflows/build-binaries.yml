@@ -1,0 +1,116 @@
+name: Build Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            artifact: pacta-linux.tar.gz
+          - os: windows-latest
+            platform: windows
+            artifact: pacta-windows.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Create standalone app
+        run: |
+          mkdir -p dist/app
+          cp -r .next dist/app/
+          cp -r public dist/app/ 2>/dev/null || true
+          cp package.json dist/app/
+          cp next.config.ts dist/app/
+          cp start-production.js dist/app/
+          cp tsconfig.json dist/app/
+
+      - name: Install production dependencies
+        run: npm install --omit=dev
+        working-directory: dist/app
+
+      - name: Download Node.js (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          mkdir -p dist/linux/node
+          curl -fsSL https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz | \
+            tar -xJ -C dist/linux/node --strip-components=1
+
+      - name: Download Node.js (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          mkdir -p dist/windows/node
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/v22.14.0/win-x64/node.exe" -OutFile "dist/windows/node/node.exe"
+
+      - name: Setup package structure
+        run: |
+          mkdir -p dist/shared/data dist/shared/uploads dist/shared/config
+          cp .env.example dist/shared/config/
+
+      - name: Copy platform files
+        run: |
+          cp -r package/${{ matrix.platform }}/* dist/${{ matrix.platform }}/ 2>/dev/null || true
+          cp -r package/shared/* dist/shared/ 2>/dev/null || true
+
+      - name: Create Linux archive
+        if: matrix.platform == 'linux'
+        run: |
+          tar -czf ${{ matrix.artifact }} -C dist .
+          echo "Linux package size: $(du -h ${{ matrix.artifact }} | cut -f1)"
+
+      - name: Create Windows archive
+        if: matrix.platform == 'windows'
+        run: |
+          Compress-Archive -Path dist/* -DestinationPath ${{ matrix.artifact }}
+          $size = (Get-Item ${{ matrix.artifact }}).Length / 1MB
+          Write-Host "Windows package size: $([math]::Round($size, 2)) MB"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pacta-linux.tar.gz
+            pacta-windows.zip
+          generate_release_notes: true
+          draft: true
