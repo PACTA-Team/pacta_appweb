@@ -2,11 +2,15 @@
 
 import Error from "next/error";
 
-export default function GlobalError() {
+export default function GlobalError({ error }: { error?: Error }) {
   return (
-    <html>
+    <html lang="en">
       <body>
-        <Error statusCode={undefined as any} />
+        <h1>Something went wrong</h1>
+        <pre style={{ whiteSpace: 'pre-wrap' }}>
+          {(error as any)?.message || 'An unexpected error occurred'}
+        </pre>
+        <Error statusCode={500} />
       </body>
     </html>
   );
