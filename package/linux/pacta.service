@@ -1,14 +1,15 @@
 [Unit]
-Description=PACTA Local Server
+Description=PACTA Contract Management System
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/pacta/app
-ExecStart=/opt/pacta/linux/node/bin/node /opt/pacta/app/start-production.js
+WorkingDirectory=/opt/pacta
+ExecStart=/opt/pacta/node/bin/node /opt/pacta/server.js
 Restart=on-failure
 RestartSec=10
 Environment=NODE_ENV=production
+Environment=PORT=3000
 
 [Install]
 WantedBy=multi-user.target

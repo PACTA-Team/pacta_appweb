@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+if [ "$1" = "configure" ]; then
+    systemctl daemon-reload
+    systemctl enable pacta
+    systemctl start pacta
+    echo "PACTA installed successfully!"
+    echo "Access at: http://127.0.0.1:3000"
+    echo "For LAN access: sudo ufw allow 3000/tcp"
+fi
