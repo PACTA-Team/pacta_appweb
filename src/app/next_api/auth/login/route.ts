@@ -36,9 +36,10 @@ export const POST = requestMiddleware(async (request: NextRequest) => {
   );
 
   // Set httpOnly cookies
+  const isProd = process.env.NODE_ENV === 'production';
   response.cookies.set('pacta_token', result.token, {
     httpOnly: true,
-    secure: false,  // HTTP for local LAN
+    secure: isProd,
     sameSite: 'lax',
     path: '/',
     maxAge: 8 * 60 * 60,  // 8 hours
@@ -50,7 +51,7 @@ export const POST = requestMiddleware(async (request: NextRequest) => {
     role: result.user.role,
   }), {
     httpOnly: true,
-    secure: false,
+    secure: isProd,
     sameSite: 'lax',
     path: '/',
     maxAge: 8 * 60 * 60,
