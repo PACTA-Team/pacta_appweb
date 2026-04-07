@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { login } from '@/lib/auth';
 import { createSuccessResponse, createErrorResponse } from '@/lib/create-response';
 import { requestMiddleware, validateRequestBody } from '@/lib/api-utils';
@@ -30,5 +30,31 @@ export const POST = requestMiddleware(async (request: NextRequest) => {
     });
   }
 
-  return createSuccessResponse({ token: result.token, user: result.user });
+  // Create response with user data (no token in body)
+  const response = NextResponse.json(
+    createSuccessResponse({ user: result.user })
+  );
+
+  // Set httpOnly cookies
+  response.cookies.set('pacta_token', result.token, {
+    httpOnly: true,
+    secure: false,  // HTTP for local LAN
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 8 * 60 * 60,  // 8 hours
+  });
+
+  response.cookies.set('pacta_user', JSON.stringify({
+    id: result.user.id,
+    name: result.user.name,
+    role: result.user.role,
+  }), {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 8 * 60 * 60,
+  });
+
+  return response;
 });
