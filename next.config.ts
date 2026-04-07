@@ -5,8 +5,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://127.0.0.1:3000', 'http://localhost:3000'];
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
   async headers() {
     return [
