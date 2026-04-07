@@ -37,7 +37,7 @@ export async function authenticateRequest(request: NextRequest): Promise<{ user:
 
     // Fetch user from database
     const db = getDb();
-    const user = db.prepare('SELECT id, name, email, role, status, last_access, created_at FROM users WHERE id = ?', payload.sub).get() as any;
+    const user = db.prepare('SELECT id, name, email, role, status, last_access, created_at FROM users WHERE id = ?').get(payload.sub) as any;
 
     if (!user || user.status !== 'active') {
       return createErrorResponse({
