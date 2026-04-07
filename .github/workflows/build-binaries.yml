@@ -94,19 +94,22 @@ jobs:
         run: npm run build
 
       - name: Download Node.js
+        shell: bash
         run: |
           mkdir -p dist/windows/node
-          Invoke-WebRequest -Uri "https://nodejs.org/dist/v${{ env.NODE_VERSION }}/win-x64/node.exe" -OutFile "dist/windows/node/node.exe"
+          curl -fsSL https://nodejs.org/dist/v${{ env.NODE_VERSION }}/win-x64/node.exe -o dist/windows/node/node.exe
 
       - name: Download NSSM
+        shell: bash
         run: |
           mkdir -p dist/windows
-          Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile "nssm.zip"
-          Expand-Archive -Path nssm.zip -DestinationPath nssm-temp
-          Copy-Item "nssm-temp/nssm-2.24/win64/nssm.exe" -Destination "dist/windows/nssm.exe"
-          Remove-Item -Recurse -Force nssm.zip, nssm-temp
+          curl -fsSL https://nssm.cc/release/nssm-2.24.zip -o nssm.zip
+          unzip -q nssm.zip
+          cp nssm-2.24/win64/nssm.exe dist/windows/nssm.exe
+          rm -rf nssm.zip nssm-2.24
 
       - name: Assemble package
+        shell: bash
         run: |
           mkdir -p dist/windows/app
           cp -r .next/standalone/* dist/windows/app/
@@ -116,11 +119,11 @@ jobs:
           cp package/windows/start.bat dist/windows/
 
       - name: Generate Inno Setup script
+        shell: bash
         run: |
-          $VERSION = "${{ github.ref_name }}" -replace 'v',''
-          $iss = Get-Content -Raw "package/windows/pacta.iss"
-          $iss = $iss -replace '\{VERSION_PLACEHOLDER\}', $VERSION
-          Set-Content -Path "dist/windows/pacta.iss" -Value $iss
+          VERSION="${GITHUB_REF#refs/tags/}"
+          VERSION="${VERSION#v}"
+          sed "s/{VERSION_PLACEHOLDER}/${VERSION}/g" package/windows/pacta.iss > dist/windows/pacta.iss
 
       - name: Compile Inno Setup
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
