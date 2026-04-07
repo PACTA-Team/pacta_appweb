@@ -1,10 +1,11 @@
 # Pacta - Contract Management Application
 
+[![Build Binaries](https://github.com/PACTA-Team/pacta_appweb/actions/workflows/build-binaries.yml/badge.svg)](https://github.com/PACTA-Team/pacta_appweb/actions/workflows/build-binaries.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-brightgreen)](SECURITY.md)
 [![Next.js](https://img.shields.io/badge/Next.js-15.5-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC)](https://tailwindcss.com/)
-[![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57)](https://www.sqlite.org/)
 
 Pacta is a comprehensive contract management web application designed to streamline the lifecycle of business agreements. It serves as a digital platform for organizations to manage contracts between clients and suppliers, including tracking contract details, authorized signers, supplements (modifications), and generating various reports. The application provides role-based access control, automated notifications for expiring contracts, and a dashboard for key performance indicators.
 
@@ -21,6 +22,74 @@ Pacta is a comprehensive contract management web application designed to streaml
 - **Users Management**: User accounts with role-based permissions (admin, manager, editor, viewer).
 - **Audit Logging**: Change tracking system for contract operations.
 - **Responsive Design**: Mobile-first approach with responsive layouts.
+
+## Installation
+
+### Pre-built Binaries (Recommended)
+
+Download the latest release from [GitHub Releases](https://github.com/PACTA-Team/pacta_appweb/releases).
+
+#### Linux (Ubuntu/Debian)
+
+```bash
+# Download the latest .deb package
+sudo dpkg -i pacta_*.deb
+
+# Fix any missing dependencies
+sudo apt -f install
+
+# Service starts automatically
+# Access at: http://127.0.0.1:3000
+```
+
+#### Windows
+
+1. Download `pacta-setup-*.exe` from the latest release
+2. Run as Administrator
+3. The installer will:
+   - Install to `%ProgramFiles%\PACTA\`
+   - Register a Windows service (auto-start)
+   - Start the server automatically
+4. Access at: http://127.0.0.1:3000
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/PACTA-Team/pacta_appweb.git
+cd pacta_appweb
+
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env
+# Edit .env and set JWT_SECRET (openssl rand -base64 32)
+
+# Start development server
+npm run dev
+```
+
+### Service Management
+
+**Linux:**
+```bash
+sudo systemctl status pacta    # Check status
+sudo systemctl restart pacta   # Restart
+sudo journalctl -u pacta -f    # View logs
+```
+
+**Windows:**
+```powershell
+nssm status Pacta              # Check status
+nssm restart Pacta             # Restart
+```
+
+### LAN Access
+
+To allow network access:
+- **Linux:** `sudo ufw allow 3000/tcp`
+- **Windows:** Add inbound rule for port 3000 in Windows Defender Firewall
 
 ## Technology Stack
 
@@ -139,6 +208,10 @@ Please ensure your code follows the project's coding standards and includes appr
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for our security policy and vulnerability disclosure process.
 
 ## Deployment
 
