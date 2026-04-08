@@ -125,6 +125,21 @@ jobs:
           mkdir -p dist/windows/node
           curl -fsSL https://nodejs.org/dist/v${{ env.NODE_VERSION }}/win-x64/node.exe -o dist/windows/node/node.exe
 
+      - name: Build PACTA Launcher
+        shell: bash
+        run: |
+          # Install goversioninfo for embedding icon and version info
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+
+          # Generate version info with icon
+          cd package/windows/launcher
+          goversioninfo -o resource_windows.syso
+
+          # Build the launcher with embedded icon
+          go build -ldflags="-H windowsgui -s -w" -o ../../../dist/windows/PACTA.exe main.go
+
+          echo "Launcher built: $(du -h ../../../dist/windows/PACTA.exe | cut -f1)"
+
       - name: Install NSSM
         run: choco install nssm --no-progress --yes
 
@@ -158,12 +173,37 @@ jobs:
           cp .env.example dist/windows/shared/config/.env.example
           cp package/windows/start.bat dist/windows/
 
+          # Copy the PACTA launcher executable
+          cp dist/windows/PACTA.exe dist/windows/app/PACTA.exe
+
+          # Generate a secure JWT_SECRET for the release package
+          JWT_SECRET=$(openssl rand -base64 32 | tr -d '\n')
+          cat > dist/windows/app/.env << EOF
+          # PACTA Environment Configuration
+          # This file is auto-generated during installation
+
+          # Required: JWT Secret (auto-generated)
+          JWT_SECRET=${JWT_SECRET}
+
+          # Allowed origins for CORS (comma-separated)
+          ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+
+          # Node environment
+          NODE_ENV=production
+
+          # Server port (default)
+          PORT=3000
+          EOF
+
       - name: Generate Inno Setup script
         shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
           VERSION="${VERSION#v}"
           sed "s/{VERSION_PLACEHOLDER}/${VERSION}/g" package/windows/pacta.iss > dist/windows/pacta.iss
+
+          # Copy icon to dist directory for Inno Setup
+          cp src/images/contract_icon.ico dist/windows/contract_icon.ico
 
       - name: Compile Inno Setup
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
@@ -175,6 +215,12 @@ jobs:
         with:
           name: pacta-windows
           path: dist/windows/pacta-setup-*.exe
+
+      - name: Upload standalone launcher
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacta-windows-launcher
+          path: dist/windows/PACTA.exe
 
   release:
     name: Create GitHub Release
@@ -191,4 +237,5 @@ jobs:
           files: |
             pacta-linux/pacta_*.deb
             pacta-windows/pacta-setup-*.exe
+            pacta-windows-launcher/PACTA.exe
           generate_release_notes: true
