@@ -103,6 +103,7 @@ jobs:
         run: choco install nssm --no-progress --yes
 
       - name: Copy NSSM to package
+        shell: bash
         run: |
           mkdir -p dist/windows
           cp "/c/ProgramData/chocolatey/bin/nssm.exe" dist/windows/nssm.exe || \
