@@ -99,26 +99,15 @@ jobs:
           mkdir -p dist/windows/node
           curl -fsSL https://nodejs.org/dist/v${{ env.NODE_VERSION }}/win-x64/node.exe -o dist/windows/node/node.exe
 
-      - name: Download NSSM
-        shell: bash
+      - name: Install NSSM
+        run: choco install nssm --no-progress --yes
+
+      - name: Copy NSSM to package
         run: |
           mkdir -p dist/windows
-          # Try multiple sources
-          curl -fsSL "https://github.com/ivandrofly/nssm/releases/download/2.24-105-g895c94e/nssm-2.24-105-g895c94e.zip" -o nssm.zip 2>/dev/null && {
-            unzip -q nssm.zip
-            cp nssm-*/win64/nssm.exe dist/windows/nssm.exe
-            rm -rf nssm.zip nssm-*
-          } || {
-            # Fallback: use the Windows runner's built-in NSSM if available
-            if command -v nssm &>/dev/null; then
-              cp "$(which nssm)" dist/windows/nssm.exe
-            else
-              # Last resort: download from raw GitHub
-              curl -fsSL "https://raw.githubusercontent.com/ivandrofly/nssm/master/nssm.exe" -o dist/windows/nssm.exe 2>/dev/null || \
-              curl -fsSL "https://raw.githubusercontent.com/mowgliph/pacta_appweb/main/package/windows/nssm.exe" -o dist/windows/nssm.exe 2>/dev/null || \
-              echo "WARNING: NSSM not available"
-            fi
-          }
+          cp "/c/ProgramData/chocolatey/bin/nssm.exe" dist/windows/nssm.exe || \
+          cp "/c/tools/nssm/nssm.exe" dist/windows/nssm.exe || \
+          find /c/ProgramData/chocolatey -name "nssm.exe" -exec cp {} dist/windows/nssm.exe \;
 
       - name: Assemble package
         shell: bash
