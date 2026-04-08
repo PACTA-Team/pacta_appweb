@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 
 // Paths that don't need setup check
 const PUBLIC_PATHS = ['/setup', '/next_api/setup'];
@@ -23,9 +21,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if first-run flag exists
-  const firstRunPath = path.join(process.cwd(), 'data', '.first-run');
-  const isFirstRun = fs.existsSync(firstRunPath);
+  // Check FIRST_RUN env variable (set by postinst when no admin exists)
+  const isFirstRun = process.env.FIRST_RUN === 'true';
 
   if (isFirstRun) {
     const setupUrl = new URL('/setup', request.url);
