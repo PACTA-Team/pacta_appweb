@@ -134,6 +134,9 @@ jobs:
           # Install goversioninfo for embedding icon and version info
           go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
+          # Copy icon to launcher directory (goversioninfo can't resolve deep relative paths on Windows)
+          cp src/images/contract_icon.ico package/windows/launcher/contract_icon.ico
+
           # Generate version info with icon
           cd package/windows/launcher
           goversioninfo -o resource_windows.syso
