@@ -36,7 +36,9 @@ Filename: "{app}\nssm.exe"; Parameters: "install Pacta ""{app}\node\node.exe"" "
 Filename: "{app}\nssm.exe"; Parameters: "set Pacta AppDirectory ""{app}\app"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set Pacta DisplayName ""{#MyAppName}"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set Pacta Start SERVICE_AUTO_START"; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set Pacta AppEnvironmentExtra NODE_ENV=production PORT=3000"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set Pacta AppEnvironmentExtra ""NODE_ENV=production"" ""PORT=3000"" ""EnvironmentFile={app}\shared\config\.env"""; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set Pacta AppStdout ""{app}\shared\logs\pacta.log"""; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set Pacta AppStderr ""{app}\shared\logs\pacta-error.log"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "start Pacta"; Flags: runhidden
 
 [UninstallRun]
@@ -45,5 +47,5 @@ Filename: "{app}\nssm.exe"; Parameters: "remove Pacta confirm"; Flags: runhidden
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "http://127.0.0.1:3000"
-Name: "{group}\Start PACTA (Manual)"; Filename: "{app}\start.bat"; WorkingDir: "{app}"
+Name: "{group}\Start PACTA (Manual)"; Filename: "{app}\start.bat"; WorkingDir: "{app}\app"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"

@@ -38,6 +38,15 @@ jobs:
           JWT_SECRET: build-time-secret-for-standalone-output
         run: npm run build
 
+      - name: Verify standalone build
+        run: |
+          echo "=== Standalone directory ==="
+          ls -la .next/standalone/ 2>/dev/null || echo "ERROR: .next/standalone not found!"
+          echo "=== Server.js check ==="
+          test -f .next/standalone/server.js && echo "server.js exists" || echo "ERROR: server.js missing"
+          echo "=== Static directory ==="
+          ls -la .next/static/ 2>/dev/null || echo "WARNING: .next/static not found"
+
       - name: Download Node.js
         run: |
           mkdir -p dist/linux/opt/pacta/node
@@ -46,10 +55,21 @@ jobs:
 
       - name: Assemble package
         run: |
+          # Copy standalone build (includes server.js, node_modules, .next/server, .next/static)
           cp -r .next/standalone/* dist/linux/opt/pacta/
+
+          # Copy .next/static for Next.js to find static assets
+          mkdir -p dist/linux/opt/pacta/.next
+          cp -r .next/static dist/linux/opt/pacta/.next/static 2>/dev/null || true
+
+          # Copy public folder if it exists
           cp -r public dist/linux/opt/pacta/public 2>/dev/null || true
-          mkdir -p dist/linux/opt/pacta/data dist/linux/opt/pacta/uploads dist/linux/opt/pacta/config
-          cp .env.example dist/linux/opt/pacta/config/
+
+          # Create required directories
+          mkdir -p dist/linux/opt/pacta/data dist/linux/opt/pacta/uploads dist/linux/opt/pacta/config dist/linux/opt/pacta/logs
+
+          # Copy config files
+          cp .env.example dist/linux/opt/pacta/config/.env.example
           cp package/linux/pacta.service dist/linux/opt/pacta/
 
       - name: Build .deb package
@@ -114,10 +134,21 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/windows/app
+          # Copy standalone build (includes server.js, node_modules, .next/server, .next/static)
           cp -r .next/standalone/* dist/windows/app/
+
+          # Copy .next/static for Next.js to find static assets
+          mkdir -p dist/windows/app/.next
+          cp -r .next/static dist/windows/app/.next/static 2>/dev/null || true
+
+          # Copy public folder if it exists
           cp -r public dist/windows/app/public 2>/dev/null || true
-          mkdir -p dist/windows/shared/data dist/windows/shared/uploads dist/windows/shared/config
-          cp .env.example dist/windows/shared/config/
+
+          # Create required directories
+          mkdir -p dist/windows/shared/data dist/windows/shared/uploads dist/windows/shared/config dist/windows/shared/logs
+
+          # Copy config files
+          cp .env.example dist/windows/shared/config/.env.example
           cp package/windows/start.bat dist/windows/
 
       - name: Generate Inno Setup script

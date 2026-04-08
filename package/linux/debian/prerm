@@ -4,4 +4,6 @@ set -e
 if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ] || [ "$1" = "purge" ]; then
     systemctl stop pacta || true
     systemctl disable pacta || true
+    rm -f /etc/systemd/system/pacta.service
+    systemctl daemon-reload
 fi

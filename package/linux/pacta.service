@@ -8,6 +8,7 @@ WorkingDirectory=/opt/pacta
 ExecStart=/opt/pacta/node/bin/node /opt/pacta/server.js
 Restart=on-failure
 RestartSec=10
+EnvironmentFile=/opt/pacta/config/.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
 
