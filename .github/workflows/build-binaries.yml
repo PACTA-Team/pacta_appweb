@@ -1,3 +1,6 @@
+# DEPRECATED: Use PACTA-Team/pacta-desktop for desktop installers
+# This workflow is kept for server-only deployments.
+# See: https://github.com/PACTA-Team/pacta-desktop
 name: Build Binaries
 
 on:
