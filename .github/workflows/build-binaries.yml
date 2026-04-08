@@ -154,4 +154,3 @@ jobs:
             pacta-linux/pacta_*.deb
             pacta-windows/pacta-setup-*.exe
           generate_release_notes: true
-          draft: true
