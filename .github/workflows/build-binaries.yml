@@ -55,12 +55,14 @@ jobs:
 
       - name: Assemble package
         run: |
-          # Copy standalone build (includes server.js, node_modules, .next/server, .next/static)
-          cp -r .next/standalone/* dist/linux/opt/pacta/
+          # Copy standalone build (includes server.js, node_modules, .next/BUILD_ID, .next/server/)
+          # Use shopt -s dotglob to include hidden files like .next/ inside standalone
+          (cd .next/standalone && cp -r ./* ../../dist/linux/opt/pacta/)
+          (cd .next/standalone && cp -r ./.* ../../dist/linux/opt/pacta/ 2>/dev/null || true)
 
           # Copy .next/static for Next.js to find static assets
           mkdir -p dist/linux/opt/pacta/.next
-          cp -r .next/static dist/linux/opt/pacta/.next/static 2>/dev/null || true
+          cp -r .next/static/* dist/linux/opt/pacta/.next/static/ 2>/dev/null || true
 
           # Copy public folder if it exists
           cp -r public dist/linux/opt/pacta/public 2>/dev/null || true
@@ -134,12 +136,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/windows/app
-          # Copy standalone build (includes server.js, node_modules, .next/server, .next/static)
-          cp -r .next/standalone/* dist/windows/app/
+          # Copy standalone build (includes server.js, node_modules, .next/BUILD_ID, .next/server/)
+          (cd .next/standalone && cp -r ./* ../../dist/windows/app/)
+          (cd .next/standalone && cp -r ./.* ../../dist/windows/app/ 2>/dev/null || true)
 
           # Copy .next/static for Next.js to find static assets
           mkdir -p dist/windows/app/.next
-          cp -r .next/static dist/windows/app/.next/static 2>/dev/null || true
+          cp -r .next/static/* dist/windows/app/.next/static/ 2>/dev/null || true
 
           # Copy public folder if it exists
           cp -r public dist/windows/app/public 2>/dev/null || true
