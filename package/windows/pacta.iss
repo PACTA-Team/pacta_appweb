@@ -12,8 +12,8 @@ AppPublisherURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=..\..\LICENSE
-OutputDir=..\..\dist
+LicenseFile=../../LICENSE
+OutputDir=.
 OutputBaseFilename=pacta-setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
@@ -26,9 +26,9 @@ ArchitecturesInstallIn64BitMode=x64
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\..\dist\windows\node\*"; DestDir: "{app}\node"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\..\dist\windows\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\..\dist\shared\*"; DestDir: "{app}\shared"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "node\*"; DestDir: "{app}\node"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "shared\*"; DestDir: "{app}\shared"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Run]
