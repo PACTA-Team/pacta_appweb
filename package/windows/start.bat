@@ -1,4 +1,6 @@
 @echo off
-cd /d "%~dp0..\shared\app"
-..\windows\node\node.exe start-production.js
+cd /d "%~dp0app"
+set NODE_ENV=production
+set PORT=3000
+..\node\node.exe server.js
 pause
