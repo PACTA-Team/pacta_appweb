@@ -74,6 +74,10 @@ jobs:
           cp .env.example dist/linux/opt/pacta/config/.env.example
           cp package/linux/pacta.service dist/linux/opt/pacta/
 
+          # Copy schema for database initialization
+          mkdir -p dist/linux/opt/pacta/src/lib
+          cp src/lib/schema.sql dist/linux/opt/pacta/src/lib/schema.sql
+
       - name: Build .deb package
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
