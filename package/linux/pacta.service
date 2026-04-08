@@ -3,6 +3,8 @@ Description=PACTA Contract Management System
 After=network.target
 
 [Service]
+User=pacta
+Group=pacta
 Type=simple
 WorkingDirectory=/opt/pacta
 ExecStart=/opt/pacta/node/bin/node /opt/pacta/server.js

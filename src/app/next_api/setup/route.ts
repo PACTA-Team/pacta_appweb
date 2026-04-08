@@ -1,53 +1,92 @@
-import { NextResponse } from 'next/server';
-import { createAdminUser, hasAdminUser } from '@/lib/seed';
-import { createSuccessResponse, createErrorResponse } from '@/lib/create-response';
-import { passwordSchema } from '@/lib/validation-schemas';
+import { NextRequest, NextResponse } from 'next/server';
+import { hashPassword, createToken } from '@/lib/auth';
+import { getDb } from '@/lib/db';
+import { createErrorResponse } from '@/lib/create-response';
+import { z } from 'zod';
 
-export async function POST(request: Request) {
+const setupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { companyName, adminName, username, password } = body;
+    const parsed = setupSchema.safeParse(body);
 
-    if (!companyName || !adminName || !username || !password) {
+    if (!parsed.success) {
       return createErrorResponse({
-        errorMessage: 'All fields are required',
+        errorMessage: parsed.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', '),
         status: 400,
       });
     }
 
-    // Validate password strength
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
+    const { name, email, password } = parsed.data;
+
+    const db = getDb();
+
+    // Check if any active admin already exists
+    const existingAdmin = db.prepare(
+      "SELECT id FROM users WHERE role = 'admin' AND status = 'active'"
+    ).get();
+
+    if (existingAdmin) {
       return createErrorResponse({
-        errorMessage: passwordResult.error.errors[0].message,
+        errorMessage: 'Setup already completed. Admin account already exists.',
+        status: 403,
+      });
+    }
+
+    // Check if email already exists
+    const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingEmail) {
+      return createErrorResponse({
+        errorMessage: 'Email already in use',
         status: 400,
       });
     }
 
-    // Check if admin already exists
-    if (hasAdminUser()) {
-      return createErrorResponse({
-        errorMessage: 'Setup already completed. Admin user already exists.',
-        status: 409,
-      });
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const passwordHash = await hashPassword(password);
+
+    db.prepare(
+      'INSERT INTO users (id, name, email, username, password_hash, role, status, last_access, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(id, name, email, email.split('@')[0], passwordHash, 'admin', 'active', null, now);
+
+    // Remove first-run flag
+    const fs = require('fs');
+    const path = require('path');
+    const firstRunPath = path.join(process.cwd(), 'data', '.first-run');
+    if (fs.existsSync(firstRunPath)) {
+      fs.unlinkSync(firstRunPath);
     }
 
-    const result = await createAdminUser(adminName, username, password);
+    const token = await createToken(id, 'admin');
 
-    if (!result.success) {
-      return createErrorResponse({
-        errorMessage: result.error || 'Failed to create admin',
-        status: 400,
-      });
-    }
+    const response = NextResponse.json({
+      success: true,
+      data: {
+        user: { id, name, email, role: 'admin' },
+      },
+    });
 
-    return NextResponse.json(
-      createSuccessResponse({ message: 'Admin user created successfully. You can now login.' })
-    );
-  } catch (error) {
-    console.error('Setup error:', error);
+    const isProd = process.env.NODE_ENV === 'production';
+    response.cookies.set('pacta_token', token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 8 * 60 * 60,
+    });
+
+    return response;
+  } catch (error: any) {
+    const isProd = process.env.NODE_ENV === 'production';
     return createErrorResponse({
-      errorMessage: 'Setup failed',
+      errorCode: error.code,
+      errorMessage: isProd ? 'An internal error occurred' : error.message,
       status: 500,
     });
   }
