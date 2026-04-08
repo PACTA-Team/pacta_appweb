@@ -128,6 +128,9 @@ jobs:
       - name: Build PACTA Launcher
         shell: bash
         run: |
+          # Add Go bin to PATH
+          export PATH="$HOME/go/bin:$PATH"
+
           # Install goversioninfo for embedding icon and version info
           go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
