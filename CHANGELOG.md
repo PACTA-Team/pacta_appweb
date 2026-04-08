@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-08
+
+### Added
+- **Native Windows Launcher (PACTA.exe)** - Go-based launcher with embedded contract icon
+- **First-offline installer** - Auto-generates .env with JWT_SECRET during installation
+- **Automatic NSSM service configuration** - Correct paths, environment variables, and logging
+- **Windows Firewall rule** - Auto-adds inbound rule for port 3000 during install
+- **Desktop shortcut option** - Optional desktop icon during installation
+- **Version info embedding** - File properties show PACTA branding in Windows Explorer
+- **Direct launch mode** - `--no-wait` flag skips server health check
+
+### Changed
+- **start.bat** - Improved output with server URL display and clear instructions
+- **Installer shortcuts** - All shortcuts now use PACTA.exe launcher with consistent icon
+- **GitHub Actions workflow** - Compiles Go launcher with goversioninfo for icon embedding
+
+### Technical Details
+- **Files Created:** 10 files (launcher source, build scripts, icons, manifests)
+- **Files Modified:** 3 files (workflow, ISS, start.bat)
+- **Lines Added:** 440 lines
+- **Languages:** Go, Inno Setup Pascal Script, Batch, YAML
+
+### Installer Improvements
+- Auto-generates unique JWT_SECRET using GUID during install
+- Sets NODE_ENV, PORT, HOSTNAME environment variables for NSSM service
+- Configures stdout/stderr logging to `shared/logs/`
+- Creates all required directories (data, uploads, logs, config)
+- Uninstall cleans up NSSM service and firewall rule
+
+### Security
+- JWT_SECRET auto-generated per installation (no default credentials)
+- CORS restricted to local origins
+- httpOnly cookies for token storage
+- Role-based authorization middleware
+
+[Unreleased]: https://github.com/PACTA-Team/pacta_appweb/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/PACTA-Team/pacta_appweb/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/PACTA-Team/pacta_appweb/releases/tag/v0.4.1
+
 ## [0.3.1] - 2026-04-08
 
 ### Fixed
