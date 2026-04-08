@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-08
+
+### Fixed
+- **Release build pipeline** - Fixed broken Linux .deb and Windows .exe artifacts
+
+### Linux (.deb)
+- Added `EnvironmentFile` to pacta.service for proper .env loading
+- Fixed postinst script to install systemd service file to `/etc/systemd/system/`
+- Auto-generate JWT_SECRET on install if placeholder detected
+- Include `.next/standalone` build output in package (was missing)
+- Include `.next/static` and `public` folder for static assets
+- Create required directories (data, uploads, logs, config)
+- Clean up service file on uninstall
+
+### Windows (.exe)
+- Fixed start.bat paths to use correct standalone structure
+- Added .env loading via NSSM AppEnvironmentExtra
+- Added log file configuration (stdout/stderr)
+- Include `.next/static` and proper directory structure
+
+### General
+- Added `PORT=3000` to .env.example
+- Added build verification step to catch missing standalone early
+
 ## [0.2.0-security] - 2026-04-07
 
 ### Security
