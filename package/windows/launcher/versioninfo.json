@@ -28,6 +28,6 @@
         "ProductName": "PACTA",
         "ProductVersion": "v0.1.0.0"
     },
-    "IconPath": "../../src/images/contract_icon.ico",
+    "IconPath": "..\\..\\src\\images\\contract_icon.ico",
     "ManifestPath": "manifest.xml"
 }
