@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { login } from '@/lib/auth';
-import { createSuccessResponse, createErrorResponse } from '@/lib/create-response';
+import { createErrorResponse } from '@/lib/create-response';
 import { requestMiddleware, validateRequestBody } from '@/lib/api-utils';
 import { z } from 'zod';
 
@@ -31,9 +31,10 @@ export const POST = requestMiddleware(async (request: NextRequest) => {
   }
 
   // Create response with user data (no token in body)
-  const response = NextResponse.json(
-    createSuccessResponse({ user: result.user })
-  );
+  const response = NextResponse.json({
+    success: true,
+    data: { user: result.user },
+  });
 
   // Set httpOnly cookies
   const isProd = process.env.NODE_ENV === 'production';
